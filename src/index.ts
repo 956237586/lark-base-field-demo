@@ -1,100 +1,93 @@
-import { basekit, FieldType, field, FieldComponent, FieldCode, NumberFormatter, AuthorizationType } from '@lark-opdev/block-basekit-server-api';
-const { t } = field;
-
+import { basekit, FieldType, field, FieldComponent, FieldCode, IFormItem, FieldResultType, Field, FieldContext } from '@lark-opdev/block-basekit-server-api';
+const i18n = field.t
 // 通过addDomainList添加请求接口的域名
-basekit.addDomainList(['api.exchangerate-api.com']);
+const domainList: string[] = ['api.exchangerate-api.com']
+basekit.addDomainList(domainList);
 
-basekit.addField({
-  // 定义捷径的i18n语言资源
-  i18n: {
-    messages: {
-      'zh-CN': {
-        'rmb': '人民币金额',
-        'usd': '美元金额',
-        'rate': '汇率',
-      },
-      'en-US': {
-        'rmb': 'RMB Amount',
-        'usd': 'Dollar amount',
-        'rate': 'Exchange Rate',
-      },
-      'ja-JP': {
-        'rmb': '人民元の金額',
-        'usd': 'ドル金額',
-        'rate': '為替レート',
-      },
-    }
+// 定义捷径的i18n语言资源
+const i18nMap = {
+  messages: {
+    'zh-CN': {
+      'email': '邮箱',
+    },
+    'en-US': {
+      'email': 'Email',
+    },
+  }
+}
+// 定义捷径的入参
+type ITextValue = {
+  type: 'text';
+  text: string;
+}
+interface ParamType {
+    email: ITextValue;
+}
+const formItem: IFormItem = {
+  key: 'email',
+  label: i18n('email'),
+  component: FieldComponent.FieldSelect,
+  props: {
+    supportType: [FieldType.Text],
   },
-  // 定义捷径的入参
-  formItems: [
+  validator: {
+    required: true,
+  }
+}
+const formItems: IFormItem[] = [formItem]
+// 定义捷径的返回结果类型
+const extra = {
+  icon: {
+    light: 'https://lf3-static.bytednsdoc.com/obj/eden-cn/eqgeh7upeubqnulog/chatbot.svg',
+  },
+  properties: [
     {
-      key: 'account',
-      label: t('rmb'),
-      component: FieldComponent.FieldSelect,
-      props: {
-        supportType: [FieldType.Number],
-      },
-      validator: {
-        required: true,
-      }
+      key: 'id',
+      isGroupByKey: true,
+      type: FieldType.Text,
+      title: 'id',
+      hidden: true,
+    },
+    {
+      key: 'email',
+      type: FieldType.Text,
+      title: i18n('email'),
+      primary: true
     },
   ],
-  // 定义捷径的返回结果类型
-  resultType: {
-    type: FieldType.Object,
-    extra: {
-      icon: {
-        light: 'https://lf3-static.bytednsdoc.com/obj/eden-cn/eqgeh7upeubqnulog/chatbot.svg',
-      },
-      properties: [
-        {
-          key: 'id',
-          isGroupByKey: true,
-          type: FieldType.Text,
-          title: 'id',
-          hidden: true,
-        },
-        {
-          key: 'usd',
-          type: FieldType.Number,
-          title: t('usd'),
-          primary: true,
-          extra: {
-            formatter: NumberFormatter.DIGITAL_ROUNDED_2,
-          }
-        },
-        {
-          key: 'rate',
-          type: FieldType.Number,
-          title: t('rate'),
-          extra: {
-            formatter: NumberFormatter.DIGITAL_ROUNDED_4,
-          }
-        },
-      ],
-    },
-  },
-  // formItemParams 为运行时传入的字段参数，对应字段配置里的 formItems （如引用的依赖字段）
-  execute: async (formItemParams: { account: number }, context) => {
-    const { account = 0 } = formItemParams;
-    try {
-      const res = await context.fetch('https://api.exchangerate-api.com/v4/latest/CNY', { // 已经在addDomainList中添加为白名单的请求
-        method: 'GET',
-      }).then(res => res.json());
-      const usdRate = res?.rates?.['USD'];
-      return {
-        code: FieldCode.Success,
-        data: {
-          id: `${Math.random()}`,
-          usd: parseFloat((account * usdRate).toFixed(4)),
-          rate: usdRate,
-        }
-      }
-    } catch (e) {
-      return {
-        code: FieldCode.Error,
-      }
+}
+const reulstType: FieldResultType = {
+  type: FieldType.Object,
+  extra: extra
+}
+// const reulstType: FieldResultType = {
+//   type: FieldType.Text,
+//   // extra: extra
+// }
+// formItemParams 为运行时传入的字段参数，对应字段配置里的 formItems （如引用的依赖字段）
+const execute = async (formItemParams: ParamType, context: FieldContext) => {
+  const { tenantKey, logID, token, timeZone, } = context
+  const { email } = formItemParams;
+  try {
+    console.log(`logID:${logID},tenantKey:${tenantKey},token:${token},formItemParams:`)
+    console.log(formItemParams)
+    const emailAddress = email[0].text
+    const mockText = + new Date() + '' + emailAddress
+    const data = {
+      id: mockText,
+      email: mockText
     }
-  },
-});
+    // const data = mockText
+    const code = FieldCode.Success
+    const result = { code: code, data: data }
+    console.log(result)
+    return result
+  } catch (e) {
+    return {
+      code: FieldCode.Error,
+    }
+  }
+}
+const resultField: Field = { i18n: i18nMap, formItems: formItems, resultType: reulstType, execute: execute }
+basekit.addField(resultField);
 export default basekit;
